@@ -111,18 +111,24 @@ def evolve_population(population, population_size, efficiency_limit, space_width
     best_matrix = None
     best_efficiency = 0.0
     #fitness_scores = 0
-    while (generation == 0 or max(fitness_scores) < efficiency_limit):
+    
+    max_fitness_scores = 0
+    while (generation == 0 or max_fitness_scores < efficiency_limit):
         print(f"\n--- Generation {generation + 1} ---")
+        fitness_scores = []
+        
+        print("Fitness Scores:", fitness_scores)
         for i, individual in enumerate(population, 1):
-            _, efficiency = run_algorithm_with_blocks(individual, space_width, space_height)
+            matrix, efficiency = run_algorithm_with_blocks(individual, space_width, space_height)
+            fitness_scores.append(efficiency)
             print(f"Individual {i}: Efficiency: {efficiency:.2%}")
             
             # Neden tekrardan hesaplıyoruz? 
             if efficiency > best_efficiency:
-                best_matrix, best_efficiency = run_algorithm_with_blocks(individual, space_width, space_height)
+                best_matrix, best_efficiency = matrix, efficiency
                 # Neden tekrar hesaplıyoruz, tutsaydık ya? 
-        fitness_scores = [run_algorithm_with_blocks(individual, space_width, space_height)[1] for individual in
-                          population]
+                
+        max_fitness_scores = max(fitness_scores)
         top_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)[
                       :population_size // 2]
         top_individuals = [population[i] for i in top_indices]
