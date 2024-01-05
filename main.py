@@ -1,5 +1,6 @@
 from cProfile import run
 from rectpack import newPacker, PackingBin
+import rectpack.guillotine as guillotine
 import matplotlib.pyplot as plt
 import random
 
@@ -25,12 +26,9 @@ def plot_solution(packed_rectangles, bin_width, bin_height, rectangle_size):
     plt.show()
 
 
-def run_test(file_name, algo):
-
-    # file_name = "Original/C1_1"  # Replace "txt" with the actual file extension if different
+def read_rectangles(file_name):
     rectangles = []
-    size = 0
-    bin_width, bin_height = 0,0
+    
     try:
         with open(file_name, 'r') as file:
             size = int(file.readline().strip('\n'))
@@ -42,12 +40,19 @@ def run_test(file_name, algo):
         print(f"Error: File '{file_name}' not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
+        
+    return rectangles, size, bin_width, bin_height
+
+def run_test(rectangles, size, bin_width, bin_height, algo):
+
+    # file_name = "Original/C1_1"  # Replace "txt" with the actual file extension if different
+    
 
     # print("Number of rectangles: " + str(len(rectangles)))
         # Create a new packer BBF
     packer = newPacker(
         rotation=True,
-        bin_algo=algo
+        bin_algo=algo,
     )
 
     # Add rectangles to pack
@@ -78,15 +83,10 @@ if __name__ == "__main__":
             filename = basename + str(i) + "_" + str(j)
             # print("Testing: ", str(i) + "_" + str(j))
             total_count = 0
-           
-            #for algo in algos:
-            #    total_count = 0
-            #    for _ in range(100):
-            #       count = run_test(filename, algo)
-            #       total_count = total_count + count
-            #    results[algosStr[algo]] = total_count / 100
-            run_test(filename, PackingBin.Global)      
-            # print(results)
+            
+            rectangles, size, bin_width, bin_height = read_rectangles(filename)
+            run_test(rectangles, size, bin_width, bin_height, PackingBin.Global)      
+            
             
 
             
