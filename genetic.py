@@ -2,8 +2,8 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-
-def read_input(file_path):
+# File inputs
+def import_case(file_path):
     temp_path = "Original/"
     temp_path = temp_path + file_path
     if not os.path.exists(temp_path):
@@ -16,7 +16,15 @@ def read_input(file_path):
         blocks = [tuple(map(int, line.strip().split())) for line in lines[2:]]
         return space_width, space_height, blocks, file_path
 
-def initialize_matrix(width, height):
+def get_file_input(mod, i, j):
+    if mod == 0:
+        file_path = input("Enter the filename: ")
+    else:
+        file_path = "C" + str(i) + "_" + str(j)
+    return import_case(file_path)
+
+# Area setter
+def get_empty_area(width, height):
     return [[0 for _ in range(width)] for _ in range(height)]
 
 def find_bottom_left_position(matrix, block):
@@ -37,11 +45,12 @@ def place_block(matrix, block, block_number):
             for j in range(y, y + block_height):
                 matrix[j][i] = block_number
 
-def print_matrix(matrix):
+def print_area(matrix):
     for row in matrix:
         print(" ".join(str(cell).zfill(2) if cell != 0 else "00" for cell in row))
 
-def calculate_efficiency(matrix):
+# Genetic Algorithm
+def calculate_fitness_score(matrix):
     total_area = len(matrix) * len(matrix[0])
     non_zero_area = total_area - sum(row.count(0) for row in matrix)
     if total_area == 0:
@@ -50,17 +59,17 @@ def calculate_efficiency(matrix):
         efficiency = non_zero_area / total_area
     return efficiency
 
-def generate_random_blocks(blocks):
+def generate_random_order(blocks):
     random_blocks_lists = [random.sample(blocks, len(blocks)) for _ in range(10)]
     return random_blocks_lists
 
-def run_algorithm_with_blocks(blocks_list, space_width, space_height):
-    matrix = initialize_matrix(space_width, space_height)
+def set_area(blocks_list, space_width, space_height):
+    matrix = get_empty_area(space_width, space_height)
     block_number = 1
     for block in blocks_list:
         place_block(matrix, block, block_number)
         block_number += 1
-    efficiency = calculate_efficiency(matrix)
+    efficiency = calculate_fitness_score(matrix)
     return matrix, efficiency
 
 def crossover(parent1, parent2):
@@ -69,7 +78,7 @@ def crossover(parent1, parent2):
     child2 = parent2[:crossover_point] + [block for block in parent1 if block not in parent2[:crossover_point]]
     return child1, child2
 
-def mutate(blocks_list, blocks):
+def mutate(blocks_list):
     mutated_list = blocks_list.copy()
     index1, index2 = random.sample(range(len(mutated_list)), 2)
     temp = mutated_list[index1]
@@ -77,45 +86,23 @@ def mutate(blocks_list, blocks):
     mutated_list[index2] = temp
     return mutated_list
 
-def get_file_input(mod, i, j):
-    if mod == 0:
-        file_path = input("Enter the filename: ")
-    else:
-        file_path = "C" + str(i) + "_" + str(j)
-    return read_input(file_path)
-
-
-def print_best_results(path, matrix, efficiency):
-#       print("\n--- Best Matrix ---")
-    # print_matrix(matrix)
-    img_path_tmp = "Images/"
-    img_path_tmp = img_path_tmp + path + ".png"
-    create_image(matrix, img_path_tmp)
-    print(f"Best Efficiency: {efficiency:.2%}")
-    print(f"Image saved as {img_path_tmp}")
-
-
-def evolve_population(population, population_size, efficiency_limit, space_width, space_height, blocks):
+def evolve_population(population, population_size, efficiency_limit, space_width, space_height, generation_threshold):
     generation = 0
     best_matrix = None
     best_efficiency = 0.0
-    #fitness_scores = 0
-    
     max_fitness_scores = 0
-    while (generation == 0 or max_fitness_scores < efficiency_limit):
-        #print(f"\n--- Generation {generation + 1} ---")
+    
+    while (generation < generation_threshold and max_fitness_scores < efficiency_limit):
+        print(f"\n--- Generation {generation + 1}/ { generation_threshold } ---")
         fitness_scores = []
         
-        #print("Fitness Scores:", fitness_scores)
+        print("Fitness Scores:", fitness_scores)
         for i, individual in enumerate(population, 1):
-            matrix, efficiency = run_algorithm_with_blocks(individual, space_width, space_height)
+            matrix, efficiency = set_area(individual, space_width, space_height)
             fitness_scores.append(efficiency)
-            #print(f"Individual {i}: Efficiency: {efficiency:.2%}")
-            
-            # Neden tekrardan hesaplıyoruz? 
+
             if efficiency > best_efficiency:
                 best_matrix, best_efficiency = matrix, efficiency
-                # Neden tekrar hesaplıyoruz, tutsaydık ya? 
                 
         max_fitness_scores = max(fitness_scores)
         top_indices = sorted(range(len(fitness_scores)), key=lambda k: fitness_scores[k], reverse=True)[
@@ -125,16 +112,47 @@ def evolve_population(population, population_size, efficiency_limit, space_width
         for _ in range(population_size):
             parent1, parent2 = random.sample(top_individuals, 2)
             child1, child2 = crossover(parent1, parent2)
-            new_population.extend([mutate(child1, blocks), mutate(child2, blocks)])
+            new_population.extend([mutate(child1), mutate(child2)])
         num_mutations_top = population_size // 2
-        mutated_top_individuals = [mutate(individual, blocks) for individual in
+        mutated_top_individuals = [mutate(individual) for individual in
                                    random.sample(top_individuals, num_mutations_top)]
         population = mutated_top_individuals + new_population[:population_size // 2]
         generation += 1
 
     return best_matrix, best_efficiency
 
+# Printing Results
+def print_best_results(path, matrix, efficiency):
+#       print("\n--- Best Matrix ---")
+    # print_matrix(matrix)
+    img_path_tmp = "Images/"
+    img_path_tmp = img_path_tmp + path + ".png"
+    create_image(matrix, img_path_tmp)
+    print(f"Best Efficiency: {efficiency:.2%}")
+    print(f"Image saved as {img_path_tmp}")
 
+def create_image(matrix, filename):
+    cell_size = 20
+    font_size = 16 
+    image_width = len(matrix[0]) * cell_size
+    image_height = len(matrix) * cell_size
+    image = Image.new("RGB", (image_width, image_height), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle([0, 0, image_width - 1, image_height - 1], outline="black", width=1)
+    connected_regions = find_connected_regions(matrix)
+    for region in connected_regions:
+        min_x = min(x for x, _, _ in region) * cell_size
+        min_y = min(y for _, y, _ in region) * cell_size
+        max_x = (max(x for x, _, _ in region) + 1) * cell_size
+        max_y = (max(y for _, y, _ in region) + 1) * cell_size
+        width = max_x - min_x
+        height = max_y - min_y
+        draw.rectangle([min_x, min_y, min_x + width, min_y + height], outline="black", width=1)
+        draw.text((min_x + 2, min_y + 2), str(region[0][2]).zfill(2), fill="black",
+                  font=ImageFont.truetype("Verdana.ttf", font_size))
+    image.save(filename)
+
+# gCode
 def find_connected_regions(matrix):
     connected_regions = []
     visited = [[False] * len(matrix[0]) for _ in range(len(matrix))]
@@ -147,8 +165,8 @@ def find_connected_regions(matrix):
             if 0 <= i < len(matrix) and 0 <= j < len(matrix[0]) and matrix[i][j] == number and not visited[i][j]:
                 connected_component.append((j, i, number))
                 visited[i][j] = True
-                stack.append((i, j + 1))  # Move right
-                stack.append((i + 1, j))  # Move down
+                stack.append((i, j + 1)) 
+                stack.append((i + 1, j)) 
         return connected_component
 
     for number in range(1, max(max(row) for row in matrix) + 1):
@@ -158,7 +176,6 @@ def find_connected_regions(matrix):
                     connected_component = explore_connected_component(i, j, number)
                     connected_regions.append(connected_component)
     return connected_regions
-
 
 def create_gcode(matrix, filename, space_height, space_width):
     cell_size = 4
@@ -199,39 +216,19 @@ def create_gcode(matrix, filename, space_height, space_width):
             gcode_file.write(line + '\n')
 
 
-def create_image(matrix, filename):
-    cell_size = 20
-    font_size = 16  # Adjust the font size as needed
-    image_width = len(matrix[0]) * cell_size
-    image_height = len(matrix) * cell_size
-    image = Image.new("RGB", (image_width, image_height), "white")
-    draw = ImageDraw.Draw(image)
-    draw.rectangle([0, 0, image_width - 1, image_height - 1], outline="black", width=1)
-    connected_regions = find_connected_regions(matrix)
-    for region in connected_regions:
-        min_x = min(x for x, _, _ in region) * cell_size
-        min_y = min(y for _, y, _ in region) * cell_size
-        max_x = (max(x for x, _, _ in region) + 1) * cell_size
-        max_y = (max(y for _, y, _ in region) + 1) * cell_size
-        width = max_x - min_x
-        height = max_y - min_y
-        draw.rectangle([min_x, min_y, min_x + width, min_y + height], outline="black", width=1)
-        draw.text((min_x + 2, min_y + 2), str(region[0][2]).zfill(2), fill="black",
-                  font=ImageFont.truetype("Verdana.ttf", font_size))
-    image.save(filename)
-
-
+#  Main
 def generateForAll():
     population_size = 10
     efficiency_limit = float(input("Enter efficiency limit: "))
+    generation_threshold = int(input("Enter generation threshold: "))
     j = 1
     i = 1
     while i <= 7:
         space_width, space_height, blocks, gcode_filename = get_file_input(1, i, j)
         if not space_width is None:
-            population = generate_random_blocks(blocks)
+            population = generate_random_order(blocks)
             best_matrix, best_efficiency = evolve_population(population, population_size, efficiency_limit, space_width,
-                                                             space_height, blocks)
+                                                             space_height,  generation_threshold)
             print_best_results(gcode_filename,best_matrix, best_efficiency)
             create_gcode(best_matrix, gcode_filename, space_height, space_width)
             print(f"G-code saved as {gcode_filename}")
@@ -240,16 +237,17 @@ def generateForAll():
             j = 1
             i = i + 1
 
-
 def generateForOne():
     space_width, space_height, blocks, gcode_filename = get_file_input(0, 0, 0)
+    generation_threshold = int(input("Enter generation threshold: "))
+
     if not space_width is None:
         population_size = 10
-        population = generate_random_blocks(blocks)
+        population = generate_random_order(blocks)
         
         efficiency_limit = float(input("Enter efficiency limit: "))
         best_matrix, best_efficiency = evolve_population(population, population_size, efficiency_limit, space_width,
-                                                         space_height, blocks)
+                                                         space_height, blocks, generation_threshold)
         print_best_results(gcode_filename, best_matrix, best_efficiency)
         create_gcode(best_matrix, gcode_filename, space_height, space_width)
         print(f"G-code saved as {gcode_filename}")
