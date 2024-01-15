@@ -92,6 +92,7 @@ def evolve_population(population, population_size, efficiency_limit, space_width
     best_efficiency = 0.0
     max_fitness_scores = 0
     
+    # Should have store survivor's previously setted area.
     while (generation < generation_threshold and max_fitness_scores < efficiency_limit):
         print(f"\n--- Generation {generation + 1}/ { generation_threshold } ---")
         fitness_scores = []
@@ -148,8 +149,8 @@ def create_image(matrix, filename):
         width = max_x - min_x
         height = max_y - min_y
         draw.rectangle([min_x, min_y, min_x + width, min_y + height], outline="black", width=1)
-        draw.text((min_x + 2, min_y + 2), str(region[0][2]).zfill(2), fill="black",
-                  font=ImageFont.truetype("Verdana.ttf", font_size))
+        #draw.text((min_x + 2, min_y + 2), str(region[0][2]).zfill(2), fill="black")
+                  #font=ImageFont.truetype("Verdana.ttf", font_size))
     image.save(filename)
 
 # gCode
@@ -247,7 +248,7 @@ def generateForOne():
         
         efficiency_limit = float(input("Enter efficiency limit: "))
         best_matrix, best_efficiency = evolve_population(population, population_size, efficiency_limit, space_width,
-                                                         space_height, blocks, generation_threshold)
+                                                         space_height, generation_threshold)
         print_best_results(gcode_filename, best_matrix, best_efficiency)
         create_gcode(best_matrix, gcode_filename, space_height, space_width)
         print(f"G-code saved as {gcode_filename}")
@@ -259,7 +260,7 @@ def main():
     if not os.path.exists("gCodes"):
         os.mkdir("gCodes")
 
-    mod = input("Enter mod:\nType 'Single' for only one file.\nType'All' for all files\n")
+    mod = input("Enter mod:\nType 'Single' for only one file.\nType 'All' for all files\n")
     if mod == 'Single':
         generateForOne()
     elif mod == 'All':
